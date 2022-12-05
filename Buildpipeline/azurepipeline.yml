@@ -50,13 +50,13 @@ steps:
     updateAssemblyInfo: false
 
 - bash: |
-   echo "Setting SDK version to 6_12_9"
-   SYMLINK=6_12_9
+   echo "Setting SDK version to 6_12_15"
+   SYMLINK=6_12_15
    MONOPREFIX=/Library/Frameworks/Mono.framework/Versions/$SYMLINK
    echo "##vso[task.setvariable variable=DYLD_FALLBACK_LIBRARY_PATH;]$MONOPREFIX/lib:/lib:/usr/lib:$DYLD_LIBRARY_FALLBACK_PATH"
    echo "##vso[task.setvariable variable=PKG_CONFIG_PATH;]$MONOPREFIX/lib/pkgconfig:$MONOPREFIX/share/pkgconfig:$PKG_CONFIG_PATH"
    echo "##vso[task.setvariable variable=PATH;]$MONOPREFIX/bin:$PATH"
-   sudo $AGENT_HOMEDIRECTORY/scripts/select-xamarin-sdk.sh 6_12_9
+   sudo $AGENT_HOMEDIRECTORY/scripts/select-xamarin-sdk.sh 6_12_15
    
    
    echo "Mono current"
@@ -126,14 +126,61 @@ steps:
     jdkVersionOption: '1.8'
     msbuildVersionOption: '15.0'
     
-
 - task: NuGetCommand@2
-  displayName: "Create Microcharts.Droid Nuget package"
+  displayName: "Create Microcharts.Core Nuget package"
   inputs:
     command: 'pack'
     packagesToPack: '**/Microcharts.Core.nuspec'
     configuration: 'Release'
     versioningScheme: 'off'
+    buildProperties: 'version=$(GitVersion.MajorMinorPatch)-$(GitVersion.EscapedBranchName)-$(GitVersion.BuildMetaDataPadded)'
+
+- task: NuGetCommand@2
+  displayName: "Create Microcharts.Droid Nuget package"
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/Microcharts.Android.nuspec'
+    configuration: 'Release'
+    versioningScheme: 'off'
+    buildProperties: 'version=$(GitVersion.MajorMinorPatch)-$(GitVersion.EscapedBranchName)-$(GitVersion.BuildMetaDataPadded)'
+
+- task: XamariniOS@2
+  displayName: 'Build Microchart.iOS package'
+  inputs:
+    solution: '**/Microcharts.iOS.csproj'
+    configuration: 'Release'
+
+- task: NuGetCommand@2
+  displayName: "Create Microcharts.IOS Nuget package"
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/Microcharts.iOS.nuspec'
+    configuration: 'Release'
+    versioningScheme: 'off'
+    clean: 'true'
+    buildProperties: 'version=$(GitVersion.MajorMinorPatch)-$(GitVersion.EscapedBranchName)-$(GitVersion.BuildMetaDataPadded)'
+
+- task: DotNetCoreCLI@2
+  displayName: "Restore Microcharts packages"
+  inputs:
+    command: 'restore'
+    projects: '**/Microcharts.csproj'
+    restoreDirectory: '../../packages/'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build Microcharts package'
+  inputs:
+    projects: '**/Microcharts.csproj'
+    configuration: 'Release'
+
+- task: NuGetCommand@2
+  displayName: "Create Microcharts Nuget package"
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/Package.nuspec'
+    configuration: 'Release'
+    versioningScheme: 'off'
+    clean: 'true'
     buildProperties: 'version=$(GitVersion.MajorMinorPatch)-$(GitVersion.EscapedBranchName)-$(GitVersion.BuildMetaDataPadded)'
 
 - task: PublishBuildArtifacts@1
